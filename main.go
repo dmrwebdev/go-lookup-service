@@ -4,16 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"gohttpserver/pkg/lookup"
+	"gohttpserver/pkg/server"
 	"io"
 	"net"
 	"net/http"
+	"strings"
 )
 
-const keyServerAddr = "serverAddr"
-
-func ipLookup() {
-
-}
 
 
 func getRoot(w http.ResponseWriter, r *http.Request) {
@@ -23,46 +21,48 @@ func getRoot(w http.ResponseWriter, r *http.Request) {
 	country := r.URL.Query().Get("country")
 	
 	fmt.Printf("%s: got /request. city=%s, country=%s\n",
-	ctx.Value(keyServerAddr),	city,	country)
+	ctx.Value(server.KeyServerAddr),	city,	country)
 	io.WriteString(w, "Lookup!")
 } 
 
 func getLookup(w http.ResponseWriter, r *http.Request) {
-	ip := r.URL.
-	ipLookup()
+	ip := strings.TrimPrefix(r.URL.Path, "/lookup/")
+	lookup.GetIp(ip, w)
 }
 
-func startServer(s http.Server, c context.CancelFunc) {
-		err := s.ListenAndServe()
-		if errors.Is(err, http.ErrServerClosed) {
-			fmt.Printf("server one closed\n")
-		} else if err != nil {
-			fmt.Printf("error listening for server one: %s\n", err)
-		}
-		c()
-}
 
-func generateServer(port int, mux *http.ServeMux, ctx context.Context) *http.Server{
-	return &http.Server{
-		Addr: fmt.Sprintf(":%d", port),
+
+func main() {
+	// Use custom multiplexer instead of default
+	mux := http.NewServeMux()
+	// Assign functions to routes
+	mux.HandleFunc("/", getRoot)
+	mux.HandleFunc("/lookup/", getLookup)
+
+	ctx := context.Background()
+	serverOne := &http.Server{
+		Addr: ":3333",
 		Handler: mux,
 		BaseContext: func(l net.Listener) context.Context {
-			ctx = context.WithValue(ctx, keyServerAddr, l.Addr().String())
+			ctx = context.WithValue(ctx, server.KeyServerAddr, l.Addr().String())
 			return ctx
 		},
 	}
-}
 
-func main() {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", getRoot)
-	mux.HandleFunc("/lookup", getLookup)
-	ctx, cancelCtx := context.WithCancel(context.Background())
-	serverOne := generateServer(3333, mux, ctx,)
-	//serverTwo := generateServer(44499, mux, ctx,)
+	err := serverOne.ListenAndServe()
+	if errors.Is(err, http.ErrServerClosed) {
+		fmt.Printf("server one closed\n")
+	} else if err != nil {
+		fmt.Printf("error listening for server one: %s\n", err)
+	}
 
-	startServer(*serverOne, cancelCtx)
-	//go startServer(*serverTwo, cancelCtx)
+// If additional servers are needed...	
+//ctx, cancelCtx := context.WithCancel(context.Background())
+//serverOne := server.GenerateServer(3333, mux, ctx,)
+//serverTwo := server.GenerateServer(44499, mux, ctx,)
+//go server.StartServer(*serverOne, cancelCtx)
+//go server.StartServer(*serverTwo, cancelCtx)
 
-	<-ctx.Done()
+//<-ctx.Done()
+
 }
