@@ -1,32 +1,25 @@
 package server
 
 import (
-	"context"
-	"errors"
 	"fmt"
-	"net"
+	"golookupservice/pkg/lookup"
+	"io"
 	"net/http"
+	"strings"
 )
 
-const KeyServerAddr = "serverAddr"
+func GetRoot(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	
+	city := r.URL.Query().Get("city")
+	country := r.URL.Query().Get("country")
+	
+	fmt.Printf("%s: got /request. city=%s, country=%s\n",
+	ctx.Value(KeyServerAddr),	city,	country)
+	io.WriteString(w, "Lookup!")
+} 
 
-func StartServer(s http.Server, c context.CancelFunc) {
-		err := s.ListenAndServe()
-		if errors.Is(err, http.ErrServerClosed) {
-			fmt.Printf("server one closed\n")
-		} else if err != nil {
-			fmt.Printf("error listening for server one: %s\n", err)
-		}
-		c()
-}
-
-func GenerateServer(port int, mux *http.ServeMux, ctx context.Context) *http.Server{
-	return &http.Server{
-		Addr: fmt.Sprintf(":%d", port),
-		Handler: mux,
-		BaseContext: func(l net.Listener) context.Context {
-			ctx = context.WithValue(ctx, KeyServerAddr, l.Addr().String())
-			return ctx
-		},
-	}
+func GetLookup(w http.ResponseWriter, r *http.Request) {
+	ip := strings.TrimPrefix(r.URL.Path, "/lookup/")
+	lookup.GetIp(ip, w)
 }
