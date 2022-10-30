@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-const lookupRoute = "lookup"
+const lookupRoute = "/lookup/"
 
 // Declared routes for the server. Add additional routes here
 func handleRoutes(mux *http.ServeMux, s *httpServer) {
